@@ -39,12 +39,14 @@
 </div>
 </template>
 <script>
+import axios from 'axios'
+import { Register, Login } from "@/api/login";
+import {ref, reactive,isRef,toRefs,onMounted} from '@vue/composition-api'
 import {stripscript,validateEmails,validatePass,validateMobilenum,validateUser} from '@/utils/validate';
 export default{
-    name:'login',
-    
-    data(){
-      var validateEmail = (rule, value, callback) => { 
+  name:'login',
+  setup(props,{refs}){
+            var validateEmail = (rule, value, callback) => { 
         if (value === '') {
           callback(new Error('请输入邮箱'));
         } else if(validateEmails(value)){
@@ -52,11 +54,12 @@ export default{
         } 
         else {
           callback();
-        }  };
-
-      var validatePassword = (rule, value, callback) => {
-       this.ruleForm.password =stripscript(value)
-       value= this.ruleForm.password
+        }  
+      };
+  
+    let validatePassword = (rule, value, callback) => {
+    ruleForm.password =stripscript(value)
+    value= ruleForm.password
         if (value === '') {
           callback(new Error('请输入密码'));
         } else if (validatePass(value)) {
@@ -64,20 +67,20 @@ export default{
         } else { 
           callback();
         }
-      }
-        var validatePasswords = (rule, value, callback) => {
-       this.ruleForm.passwords =stripscript(value)
-       value= this.ruleForm.passwords
+    }
+    let validatePasswords = (rule, value, callback) => {
+       ruleForm.passwords =stripscript(value)
+       value= ruleForm.passwords
         if (value === '') {
           callback(new Error('请再次输入密码'));
-        } else if (value != this.ruleForm.password) {
+        } else if (value != ruleForm.password) {
           callback(new Error('重复输入密码不正确!'));
         } else {
           callback();
         }
       };
 
-          var validateUsername = (rule, value, callback) => { 
+    let validateUsername = (rule, value, callback) => { 
         if (value === '') {
           callback(new Error('请输入用户昵称'));
         }
@@ -85,7 +88,7 @@ export default{
           callback();
         }  };
 
-            var validateMobile = (rule, value, callback) => { 
+    let validateMobile = (rule, value, callback) => { 
         if (value === '') {
           callback(new Error('请输入电话号码'));
         } else if(validateMobilenum(value)){
@@ -93,21 +96,25 @@ export default{
         } 
         else {
           callback();
-        }  };
+           } 
+         };
 
-        return{
-        menuTab:[
+    const  menuTab=reactive([
         { txt: '登录',current: true ,type :'login'},
         { txt: '注册',current: false ,type:'register'}
-        ],
-        model:'login',
-        ruleForm: {
+        ])
+    
+      //模块值
+    const model = ref('login')
+
+    const ruleForm = reactive ({
           email: '',
           password: '',
           mobile:'',
           username:'',
-        },
-        rules: {
+        })
+
+    const rules= reactive({
           email: [
             { validator: validateEmail, trigger: 'blur' }
           ],
@@ -123,34 +130,83 @@ export default{
             mobile: [
             { validator: validateMobile, trigger: 'blur' }
           ],
-        }
-        }
-    },
-    created(){},
-    mounted(){},
-    
-    methods:{
-        toggleMenu(data){
-            this.menuTab.forEach((elem) => {
+        })
+/**声明函数 */
+    const  toggleMenu = (data => {
+            menuTab.forEach((elem) => {
                 elem.current =false                
             });
             //高光
             data.current= true
             //修改模块值
-            this.model= data.type
-        },
-      submitForm(formName) {
-        this.$refs[formName].validate((valid) => {
+            model.value= data.type
+        })
+
+     const submitForm = (formName => {
+        refs[formName].validate((valid) => {
+          // 表单验证通过
           if (valid) {
-            alert('submit!');
+            // 三元运算
+            model.value === 'login' ? login() : register()
           } else {
             console.log('error submit!!');
             return false;
           }
-        });
-      }
-   }
+        })
+      }) 
+//登录
+      const login = (() => {
+        let repuestData = {
+          username: ruleForm.username,
+          password: ruleForm.password,
+        }
+        root.$store.dispatch('app/login', repuestData).then(response => {
+          // 页面跳转
+          root.$router.push({
+            name: 'Console'
+          })
+        }).catch(error => {});
+      })
 
+
+        const register = (() => {
+        let requestData = {
+          username: ruleForm.username,
+          password: ruleForm.password,
+          mobile:ruleForm.mobile,
+          email:ruleForm.email,
+          module: 'register'
+        }
+        // 注册接口
+        Register(requestData).then(response => {
+          let data = response.data
+          root.$message({
+            message: data.message,
+            type: 'success'
+          })
+          // 模拟注册成功
+          toggleMenu(menuTab[0])
+          clearCountDown()
+        }).catch(error => {
+          // 失败时执行的代码
+        })
+      })
+/**生命周期 */
+//挂在完成后  
+    onMounted (() =>{
+        })
+
+        return{
+          menuTab,
+          model,
+          ruleForm,
+          rules,
+           toggleMenu,
+           submitForm
+
+        }
+  },
+    created(){},
 }
 </script>
 <style lang="scss" scoped>
